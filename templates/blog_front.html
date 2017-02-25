@@ -1,0 +1,23 @@
+{% extends "blog_base.html" %}
+
+{% block content %}
+<h2>Posts recentes:</h2>
+<br>
+{% for post in posts %}
+    <div class="post">
+        <div>
+            <h4>{{post.subject}}</h4>
+        </div>
+        <pre>{{post.content}}</pre>
+    </div>
+    <br>
+    <hr>
+{% endfor %}
+<form action="/newpost">
+    <input type="submit" value="New post">
+</form>
+<br>
+<form action="/signup">
+    <input type="submit" value="Sign up!">
+</form>
+{% endblock %}
