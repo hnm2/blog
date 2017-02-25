@@ -89,7 +89,15 @@ class MainHandler(Handler):
         time.sleep(0.1)
         posts = db.GqlQuery("select * from BlogPost order by created desc limit 10")
 
-        self.render("blog_front.html", posts=posts)
+        name_val = self.request.cookies.get('name')
+        if name_val:
+            name = check_secure_val(name_val)
+            if name:
+                self.render("blog_front.html", posts=posts, login=name)
+            else:
+                self.render("blog_front.html", posts=posts)
+        else:
+            self.render("blog_front.html", posts=posts)
 
     def get(self):
         self.render_front()
@@ -215,6 +223,15 @@ class LoginHandler(Handler):
         else:
             self.render("login.html", invalid_login='Invalid login.')
 
+class LogoutHandler(Handler):
+    def get(self):
+        name_val = self.request.cookies.get('name')
+        if name_val:
+            self.response.headers.add_header('Set-Cookie', 'name=; Path=/')
+            self.redirect('/signup')
+        else:
+            self.redirect('/signup')
+
 class WelcomeHandler(Handler):
     def get(self):
         name_val = self.request.cookies.get('name')
@@ -266,6 +283,7 @@ app = webapp2.WSGIApplication([
     (r'/([0-9]+)', PostHandler),
     ('/signup', SignupHandler),
     ('/login', LoginHandler),
+    ('/logout', LogoutHandler),
     ('/welcome', WelcomeHandler)
 
 ], debug=True)
