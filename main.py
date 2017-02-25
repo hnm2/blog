@@ -152,9 +152,6 @@ class SignupHandler(Handler):
     def write_blank_form(self):
         self.render("signup.html")
 
-    def escape_html(self, s):
-        return cgi.escape(s, quote = True)
-
     def validate_username(self, user):
         return self.USER_RE.match(user)
 
@@ -163,7 +160,7 @@ class SignupHandler(Handler):
         new_user = None
         for u in user_exists:
             new_user = u
-        
+
         return new_user
 
     def validate_password(self, password):
@@ -174,6 +171,49 @@ class SignupHandler(Handler):
 
     def validate_email(self, email):
         return (email == '' or self.EMAIL_RE.match(email))
+
+class LoginHandler(Handler):
+    USER_RE = re.compile(r"^[a-zA-Z0-9_-]{3,20}$")
+    PASS_RE = re.compile(r"^.{3,20}$")
+
+    def validate_login(self, username, password):
+        user_format_ok = self.USER_RE.match(username)
+        secure_user = make_secure_val(username)
+        user_exists = db.GqlQuery('select * from User where name = \'%s\''%secure_user)
+        user = None
+        for u in user_exists:
+            user = u
+
+        user_exists = (user != None)
+        pass_ok = False
+        if user_exists:
+            pass_ok = self.PASS_RE.match(password)
+            pass_ok = (pass_ok and valid_pw(username, password, user.password))
+
+        if user_format_ok and user_exists and pass_ok:
+            return secure_user
+
+    def get(self):
+        name_val = self.request.cookies.get('name')
+        if name_val:
+            name = check_secure_val(name_val)
+            if name:
+                self.redirect('/welcome')
+            else:
+                self.render("login.html")
+        else:
+            self.render("login.html")
+
+    def post(self):
+        user = self.request.get("username")
+        pw = self.request.get("password")
+
+        validated_user = self.validate_login(user, pw)
+        if validated_user:
+            self.response.headers.add_header('Set-Cookie', 'name=%s; Path=/'%str(validated_user))
+            self.redirect('/welcome')
+        else:
+            self.render("login.html", invalid_login='Invalid login.')
 
 class WelcomeHandler(Handler):
     def get(self):
@@ -223,7 +263,9 @@ class PostHandler(Handler):
 app = webapp2.WSGIApplication([
     ('/', MainHandler),
     ('/newpost', NewPostHandler),
+    (r'/([0-9]+)', PostHandler),
     ('/signup', SignupHandler),
-    ('/welcome', WelcomeHandler),
-    (r'/([0-9]+)', PostHandler)
+    ('/login', LoginHandler),
+    ('/welcome', WelcomeHandler)
+
 ], debug=True)
